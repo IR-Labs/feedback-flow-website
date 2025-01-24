@@ -51,56 +51,61 @@ function showQuestion(index) {
 
     optionsContainer.innerHTML = ''; // Clear old options
 
-    if (questionObj.type === 'text') {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'form-control';
-        input.id = 'answer-input';
-        optionsContainer.appendChild(input);
-
-    } else if (questionObj.type === 'checkbox') {
-        questionObj.options.forEach((option, idx) => {
-            const div = document.createElement('div');
-            div.className = 'form-check';
-
+    switch (questionObj.type) {
+        case 'text': {
             const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.className = 'form-check-input';
-            input.name = 'checkboxOptions';
-            input.id = `checkbox_${idx}`;
-            input.value = option;
+            input.type = 'text';
+            input.className = 'form-control';
+            input.id = 'answer-input';
+            optionsContainer.appendChild(input);
+            break; // Important to prevent fall-through
+        }
+        case 'checkbox': {
+            questionObj.options.forEach((option, idx) => {
+                const div = document.createElement('div');
+                div.className = 'form-check';
 
-            const label = document.createElement('label');
-            label.className = 'form-check-label';
-            label.htmlFor = `checkbox_${idx}`;
-            label.textContent = option;
+                const input = document.createElement('input');
+                input.type = 'checkbox';
+                input.className = 'form-check-input';
+                input.name = 'checkboxOptions';
+                input.id = `checkbox_${idx}`;
+                input.value = option;
 
-            div.appendChild(input);
-            div.appendChild(label);
-            optionsContainer.appendChild(div);
-        });
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `checkbox_${idx}`;
+                label.textContent = option;
 
-    } else if (questionObj.type === 'radio') {
-        questionObj.options.forEach((option, idx) => {
-            const div = document.createElement('div');
-            div.className = 'form-check';
+                div.appendChild(input);
+                div.appendChild(label);
+                optionsContainer.appendChild(div);
+            });
+            break; // Important to prevent fall-through
+        }
+        case 'radio': {
+            questionObj.options.forEach((option, idx) => {
+                const div = document.createElement('div');
+                div.className = 'form-check';
 
-            const input = document.createElement('input');
-            input.type = 'radio';
-            input.className = 'form-check-input';
-            input.name = 'radioOptions';
-            input.id = `radio_${idx}`;
-            input.value = option;
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.className = 'form-check-input';
+                input.name = 'radioOptions';
+                input.id = `radio_${idx}`;
+                input.value = option;
 
-            const label = document.createElement('label');
-            label.className = 'form-check-label';
-            label.htmlFor = `radio_${idx}`;
-            label.textContent = option;
+                const label = document.createElement('label');
+                label.className = 'form-check-label';
+                label.htmlFor = `radio_${idx}`;
+                label.textContent = option;
 
-            div.appendChild(input);
-            div.appendChild(label);
-            optionsContainer.appendChild(div);
-        });
+                div.appendChild(input);
+                div.appendChild(label);
+                optionsContainer.appendChild(div);
+            });
+            break; // Important to prevent fall-through
+        }
     }
 }
 
