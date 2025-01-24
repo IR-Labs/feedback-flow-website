@@ -1,6 +1,4 @@
-
-// Mock survey data
-// Each question can have: id, question, type, options (if multiple choice)
+// Mock survey data (can be easily replaced with API call response structure)
 const mockSurveyData = [
     {
         id: 1,
@@ -44,24 +42,94 @@ const submitBtn = document.getElementById('submit-answer-btn');
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
 
-// Function to show a question
-function showQuestion(index) {
-    const questionObj = mockSurveyData[index];
-    questionText.textContent = questionObj.question;
+// Function to collect user response based on question type
+function collectResponse(questionObj) {
+    let response;
+    switch (questionObj.type) {
+        case 'text': {
+            const input = document.getElementById('answer-input');
+            response = input.value;
+            break;
+        }
+        case 'checkbox': {
+            const checkboxes = document.getElementsByName('checkboxOptions');
+            response = [];
+            checkboxes.forEach((checkbox) => {
+                if (checkbox.checked) {
+                    response.push(checkbox.value);
+                }
+            });
+            break;
+        }
+        case 'radio': {
+            const radios = document.getElementsByName('radioOptions');
+            radios.forEach((radio) => {
+                if (radio.checked) {
+                    response = radio.value;
+                }
+            });
+            break;
+        }
+        default:
+            response = null; // Handle cases where question type is not recognized
+    }
+    return response;
+}
 
+// Function to simulate submitting answer to server and getting next question
+async function submitAnswerToServer(questionObj, answer) {
+    return new Promise(resolve => {
+        // Simulate network request delay (e.g., 500ms to 1 second)
+        setTimeout(() => {
+            // Simulate server-side processing:
+            userResponses.push({
+                questionId: questionObj.id,
+                answer: answer
+            });
+
+            currentQuestionIndex++; // Move to next question index
+
+            let nextQuestionData = null;
+            if (currentQuestionIndex < mockSurveyData.length) {
+                nextQuestionData = mockSurveyData[currentQuestionIndex]; // "Server" sends next question
+            } else {
+                nextQuestionData = { type: 'thank-you' }; // "Server" signals end of survey
+            }
+            resolve(nextQuestionData); // Resolve promise with "server response"
+        }, 800); // Simulate 800ms server processing time
+    });
+}
+
+
+// Function to show a question
+function showQuestion(questionData) {
+    if (!questionData || questionData.type === 'thank-you') {
+        // Handle end of survey or invalid question data
+        surveySection.classList.add('hidden');
+        thankYouSection.classList.remove('hidden');
+        console.log("User Responses:", userResponses); // Final responses
+
+        // Optionally reset for a new survey if needed:
+        currentQuestionIndex = 0;
+        userResponses = [];
+
+        return; // Exit function if no question data or thank you
+    }
+
+    questionText.textContent = questionData.question;
     optionsContainer.innerHTML = ''; // Clear old options
 
-    switch (questionObj.type) {
+    switch (questionData.type) {
         case 'text': {
             const input = document.createElement('input');
             input.type = 'text';
             input.className = 'form-control';
             input.id = 'answer-input';
             optionsContainer.appendChild(input);
-            break; // Important to prevent fall-through
+            break;
         }
         case 'checkbox': {
-            questionObj.options.forEach((option, idx) => {
+            questionData.options.forEach((option, idx) => {
                 const div = document.createElement('div');
                 div.className = 'form-check';
 
@@ -81,10 +149,10 @@ function showQuestion(index) {
                 div.appendChild(label);
                 optionsContainer.appendChild(div);
             });
-            break; // Important to prevent fall-through
+            break;
         }
         case 'radio': {
-            questionObj.options.forEach((option, idx) => {
+            questionData.options.forEach((option, idx) => {
                 const div = document.createElement('div');
                 div.className = 'form-check';
 
@@ -104,63 +172,40 @@ function showQuestion(index) {
                 div.appendChild(label);
                 optionsContainer.appendChild(div);
             });
-            break; // Important to prevent fall-through
+            break;
+        }
+        default: {
+            console.error("Unknown question type:", questionData.type);
         }
     }
 }
 
+
 // "Start Survey" button click handler
 startBtn.addEventListener('click', () => {
-    welcomeSection.classList.add('hidden');   // hide welcome
-    surveySection.classList.remove('hidden'); // show survey
+    welcomeSection.classList.add('hidden');
+    surveySection.classList.remove('hidden');
     currentQuestionIndex = 0;
-    showQuestion(currentQuestionIndex);
+    showQuestion(mockSurveyData[currentQuestionIndex]); // Show the first question
 });
 
 // "Submit Answer" button click handler
-submitBtn.addEventListener('click', () => {
-    const questionObj = mockSurveyData[currentQuestionIndex];
-    let response;
+submitBtn.addEventListener('click', async () => {
+    const currentQuestion = mockSurveyData[currentQuestionIndex];
+    const answer = collectResponse(currentQuestion);
 
-    // Collect user's response based on question type
-    if (questionObj.type === 'text') {
-        const input = document.getElementById('answer-input');
-        response = input.value;
-    }
-    else if (questionObj.type === 'checkbox') {
-        const checkboxes = document.getElementsByName('checkboxOptions');
-        response = [];
-        checkboxes.forEach((checkbox) => {
-            if (checkbox.checked) {
-                response.push(checkbox.value);
-            }
-        });
-    }
-    else if (questionObj.type === 'radio') {
-        const radios = document.getElementsByName('radioOptions');
-        radios.forEach((radio) => {
-            if (radio.checked) {
-                response = radio.value;
-            }
-        });
-    }
+    if (answer !== null) { // Only submit if response is collected
+        submitBtn.disabled = true; // Disable submit during server call (optional)
+        submitBtn.textContent = "Submitting..."; // Indicate submission (optional)
 
-    // Store response
-    userResponses.push({
-        questionId: questionObj.id,
-        answer: response
-    });
+        const nextQuestionData = await submitAnswerToServer(currentQuestion, answer); // Wait for "server" response
 
-    // Move to the next question
-    currentQuestionIndex++;
-    if (currentQuestionIndex < mockSurveyData.length) {
-        showQuestion(currentQuestionIndex);
+        submitBtn.disabled = false; // Re-enable submit (optional)
+        submitBtn.textContent = "Submit Answer"; // Reset button text (optional)
+
+        showQuestion(nextQuestionData); // Show next question based on "server" response
     } else {
-        // No more questions - show Thank You
-        surveySection.classList.add('hidden');
-        thankYouSection.classList.remove('hidden');
-
-        // For debugging, you can check the user's responses:
-        console.log("User Responses:", userResponses);
+        console.warn("No answer collected for question type:", currentQuestion.type);
+        // Optionally provide user feedback that an answer is needed
     }
 });
