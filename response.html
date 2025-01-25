@@ -1,71 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <title>Survey Response</title>
 
   <!-- Bootstrap CSS -->
-  <link 
-    rel="stylesheet" 
-    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
-  />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
 
   <!-- Custom CSS -->
-    <link rel="stylesheet" href="assets/css/response.css" />
+  <link rel="stylesheet" href="assets/css/response.css" />
 </head>
+
 <body>
 
-<div class="container survey-container">
-  <!-- Welcome Screen -->
-  <div id="welcome-section" class="text-center">
-    <h1>Welcome to the Survey</h1>
-    <p class="mt-3">We appreciate your time in providing feedback.</p>
-    <button 
-      id="start-survey-btn" 
-      class="btn btn-primary mt-4">
-      Start Survey
-    </button>
-  </div>
-
-  <!-- Survey Questions Section -->
-  <div id="survey-section" class="hidden">
-    <div class="text-center mb-4">
-      <h2 id="survey-title">Survey Questions</h2>
-    </div>
-    <div id="question-container" class="mb-4">
-      <p class="question-text" id="question-text"></p>
-      <div id="options-container"></div>
-    </div>
-    <div class="text-right">
-      <button 
-        id="submit-answer-btn" 
-        class="btn btn-success"
-      >
-        Submit Answer
+  <div class="container survey-container">
+    <!-- Welcome Screen -->
+    <div id="welcome-section" class="text-center">
+      <h1>Welcome to the Survey</h1>
+      <p class="mt-3">We appreciate your time in providing feedback.</p>
+      <button id="start-survey-btn" class="btn btn-primary mt-4">
+        Start Survey
       </button>
     </div>
+
+    <!-- Survey Questions Section -->
+    <div id="survey-section" class="hidden" style="position: relative;">
+      <div id="loader" class="d-none" style="
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+      </div>
+      <div class="text-center mb-4">
+        <h2 id="survey-title">Survey Questions</h2>
+      </div>
+      <div id="question-container" class="mb-4">
+        <p class="question-text" id="question-text"></p>
+        <div id="options-container"></div>
+      </div>
+      <div class="text-center mt-3">
+        <button id="submit-answer-btn" class="btn btn-success">
+          Submit Answer
+        </button>
+      </div>
+    </div>
+
+    <!-- Thank You Screen -->
+    <div id="thank-you-section" class="hidden text-center">
+      <h1>Thank You!</h1>
+      <p>Your responses have been recorded.</p>
+    </div>
   </div>
 
-  <!-- Thank You Screen -->
-  <div id="thank-you-section" class="hidden text-center">
-    <h1>Thank You!</h1>
-    <p>Your responses have been recorded.</p>
-  </div>
-</div>
+  <!-- Bootstrap JS + dependencies (jQuery, Popper) -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-<!-- Bootstrap JS + dependencies (jQuery, Popper) -->
-<script 
-  src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
-></script>
-<script 
-  src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"
-></script>
-<script 
-  src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"
-></script>
-
-<!-- Custom JS -->
-    <script src="assets/js/response.js"></script>
+  <!-- Custom JS -->
+  <script src="assets/js/response.js"></script>
 
 </body>
+
 </html>
