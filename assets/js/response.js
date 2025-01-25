@@ -1,38 +1,3 @@
-// Mock survey data (can be easily replaced with API call response structure)
-const mockSurveyData = [
-    {
-        id: 1,
-        question: "What's your favorite color?",
-        type: "text",
-    },
-    {
-        id: 2,
-        question: "Which country do you live in?",
-        type: "text",
-    },
-    {
-        id: 3,
-        question: "Select your favorite fruits:",
-        type: "checkbox",
-        options: ["Apple", "Banana", "Cherry", "Date"]
-    },
-    {
-        id: 4,
-        question: "How satisfied are you with our service?",
-        type: "radio",
-        options: [
-            "Very Satisfied",
-            "Satisfied",
-            "Neutral",
-            "Unsatisfied",
-            "Very Unsatisfied"
-        ]
-    }
-];
-
-let currentQuestionIndex = 0;
-let userResponses = [];
-
 // DOM elements
 const welcomeSection = document.getElementById('welcome-section');
 const surveySection = document.getElementById('survey-section');
@@ -42,177 +7,247 @@ const submitBtn = document.getElementById('submit-answer-btn');
 const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
 
-// Function to collect user response based on question type
+// Track the current question object (as returned by API)
+let currentQuestion = null;
+
+// Keep user responses in an array
+let userResponses = [];
+
+/**
+ * Collects user response from the DOM based on the question type.
+ * @param {object} questionObj - The question object that includes "type" and "possibleChoices".
+ * @returns {string|array|null} - The user response.
+ */
 function collectResponse(questionObj) {
-    let response;
-    switch (questionObj.type) {
-        case 'text': {
-            const input = document.getElementById('answer-input');
-            response = input.value;
-            break;
-        }
-        case 'multiple_choice': {
-            const checkboxes = document.getElementsByName('checkboxOptions');
-            response = [];
-            checkboxes.forEach((checkbox) => {
-                if (checkbox.checked) {
-                    response.push(checkbox.value);
-                }
-            });
-            break;
-        }
-        case 'single_choice': {
-            const radios = document.getElementsByName('radioOptions');
-            radios.forEach((radio) => {
-                if (radio.checked) {
-                    response = radio.value;
-                }
-            });
-            break;
-        }
-        default:
-            response = null; // Handle cases where question type is not recognized
+  let response = null;
+
+  switch (questionObj.questionType) {
+    case 'text': {
+      const input = document.getElementById('answer-input');
+      response = input.value.trim() || null;
+      break;
     }
-    return response;
+
+    case 'multiple_choice': {
+      const checkboxes = document.getElementsByName('checkboxOptions');
+      response = [];
+      checkboxes.forEach((checkbox) => {
+        if (checkbox.checked) {
+          response.push(checkbox.value);
+        }
+      });
+      // If nothing selected, this will be an empty array. Adjust if you prefer null.
+      break;
+    }
+
+    case 'single_choice': {
+      const radios = document.getElementsByName('radioOptions');
+      radios.forEach((radio) => {
+        if (radio.checked) {
+          response = radio.value;
+        }
+      });
+      break;
+    }
+
+    default:
+      console.error("Unknown question type:", questionObj.type);
+      break;
+  }
+
+  return response;
 }
 
-// Function to simulate submitting answer to server and getting next question
-async function submitAnswerToServer(questionObj, answer) {
-    try {
-        const response = await fetch('https://fqq2171wy2.execute-api.ap-south-1.amazonaws.com/submit-answer', {
-            method: 'POST',
-            mode: 'cors',
-            body: JSON.stringify({
-                questionId: "abc123",
-            })
-        });
+/**
+ * Makes a request to your API. 
+ * The request now also includes the entire array of all user responses so far.
+ *
+ * The response from the API is assumed to contain fields:
+ *   - questionId
+ *   - question
+ *   - type ('text' | 'multiple_choice' | 'single_choice')
+ *   - possibleChoices (array) for multiple/single choice
+ *   - isLastQuestion (boolean)
+ * 
+ * Adjust the request/response structure based on your real API.
+ *
+ * @param {string|null} questionId - The ID of the current question or null/empty for the first call.
+ * @param {any} answer - The user's answer for the current question.
+ * @returns {object|null} - The next question object or null on error.
+ */
+async function submitAnswerToServer(questionId, answer) {
+  try {
+    // Build the request body
+    // Now sending all user responses in 'allResponses'
+    const requestBody = {
+      questionId: questionId,     // or null if first question
+      userAnswer: answer,         // the newly collected answer
+      allResponses: userResponses // all answers so far
+    };
 
-        // Log the response status (for demo purposes)
-        console.log('API Response:', response.status);
-        // Log the response data (for demo purposes)
-        if (!response.ok) throw new Error('API request failed:', response.status);
+    // Make the fetch call
+    const response = await fetch('https://fqq2171wy2.execute-api.ap-south-1.amazonaws.com/submit-answer', {
+      method: 'POST',
+      mode: 'cors',
+      body: JSON.stringify(requestBody),
+    });
 
-        const nextQuestionData = await response.json();
-        
-        // Handle API response format (adjust based on your API's actual response):
-        if (nextQuestionData.type === 'completed') {
-            return { type: 'thank-you' };
-        }
-        return nextQuestionData;
-
-    } catch (error) {
-        console.error('API Error:', error);
-        // Handle errors (retry logic, show error message, etc.)
-        return { type: 'error', message: 'Failed to submit answer' };
+    if (!response.ok) {
+      console.error('API request failed:', response.status);
+      return null;
     }
+
+    const responseData = await response.json();
+    console.log('API Response:', responseData);
+
+    // Expected structure in responseData:
+    // {
+    //   questionId: string,
+    //   question: string,
+    //   type: 'text' | 'multiple_choice' | 'single_choice',
+    //   possibleChoices: string[],
+    //   isLastQuestion: boolean
+    // }
+    return responseData;
+  } catch (error) {
+    console.error('API Error:', error);
+    return null;
+  }
 }
 
-
-// Function to show a question
+/**
+ * Displays a question in the UI. If isLastQuestion is true, shows thank-you section.
+ * @param {object} questionData - The question data object from the API or null on error.
+ */
 function showQuestion(questionData) {
-    if (!questionData || questionData.type === 'thank-you') {
-        // Handle end of survey or invalid question data
-        surveySection.classList.add('hidden');
-        thankYouSection.classList.remove('hidden');
-        console.log("User Responses:", userResponses); // Final responses
+  // If null or no question data returned, or we have isLastQuestion = true => show "Thank you"
+  if (!questionData || questionData.isLastQuestion) {
+    surveySection.classList.add('hidden');
+    thankYouSection.classList.remove('hidden');
 
-        // Optionally reset for a new survey if needed:
-        currentQuestionIndex = 0;
-        userResponses = [];
+    // For debugging or record-keeping
+    console.log("User Responses:", userResponses);
 
-        return; // Exit function if no question data or thank you
+    // Optional: reset logic if you want to start again
+    currentQuestion = null;
+    userResponses = [];
+    return;
+  }
+
+  // Store the current question
+  currentQuestion = questionData;
+
+  // Update UI elements
+  questionText.textContent = questionData.question;
+  optionsContainer.innerHTML = ''; // Clear old options
+
+  switch (questionData.questionType) {
+    case 'text': {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'form-control';
+      input.id = 'answer-input';
+      optionsContainer.appendChild(input);
+      break;
     }
 
-    questionText.textContent = questionData.question;
-    optionsContainer.innerHTML = ''; // Clear old options
+    case 'multiple_choice': {
+      // Use questionData.possibleChoices
+      (questionData.possibleChoices || []).forEach((choice, idx) => {
+        const div = document.createElement('div');
+        div.className = 'form-check';
 
-    switch (questionData.type) {
-        case 'text': {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'form-control';
-            input.id = 'answer-input';
-            optionsContainer.appendChild(input);
-            break;
-        }
-        case 'multiple_choice': {
-            questionData.options.forEach((option, idx) => {
-                const div = document.createElement('div');
-                div.className = 'form-check';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'form-check-input';
+        input.name = 'checkboxOptions';
+        input.id = `checkbox_${idx}`;
+        input.value = choice;
 
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.className = 'form-check-input';
-                input.name = 'checkboxOptions';
-                input.id = `checkbox_${idx}`;
-                input.value = option;
+        const label = document.createElement('label');
+        label.className = 'form-check-label';
+        label.htmlFor = `checkbox_${idx}`;
+        label.textContent = choice;
 
-                const label = document.createElement('label');
-                label.className = 'form-check-label';
-                label.htmlFor = `checkbox_${idx}`;
-                label.textContent = option;
-
-                div.appendChild(input);
-                div.appendChild(label);
-                optionsContainer.appendChild(div);
-            });
-            break;
-        }
-        case 'single_choice': {
-            questionData.options.forEach((option, idx) => {
-                const div = document.createElement('div');
-                div.className = 'form-check';
-
-                const input = document.createElement('input');
-                input.type = 'radio';
-                input.className = 'form-check-input';
-                input.name = 'radioOptions';
-                input.id = `radio_${idx}`;
-                input.value = option;
-
-                const label = document.createElement('label');
-                label.className = 'form-check-label';
-                label.htmlFor = `radio_${idx}`;
-                label.textContent = option;
-
-                div.appendChild(input);
-                div.appendChild(label);
-                optionsContainer.appendChild(div);
-            });
-            break;
-        }
-        default: {
-            console.error("Unknown question type:", questionData.type);
-        }
+        div.appendChild(input);
+        div.appendChild(label);
+        optionsContainer.appendChild(div);
+      });
+      break;
     }
+
+    case 'single_choice': {
+      // Use questionData.possibleChoices
+      (questionData.possibleChoices || []).forEach((choice, idx) => {
+        const div = document.createElement('div');
+        div.className = 'form-check';
+
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.className = 'form-check-input';
+        input.name = 'radioOptions';
+        input.id = `radio_${idx}`;
+        input.value = choice;
+
+        const label = document.createElement('label');
+        label.className = 'form-check-label';
+        label.htmlFor = `radio_${idx}`;
+        label.textContent = choice;
+
+        div.appendChild(input);
+        div.appendChild(label);
+        optionsContainer.appendChild(div);
+      });
+      break;
+    }
+
+    default:
+      console.error("Unknown question type:", questionData.questionType);
+      break;
+  }
 }
-
 
 // "Start Survey" button click handler
-startBtn.addEventListener('click', () => {
-    welcomeSection.classList.add('hidden');
-    surveySection.classList.remove('hidden');
-    currentQuestionIndex = 0;
-    showQuestion(mockSurveyData[currentQuestionIndex]); // Show the first question
+startBtn.addEventListener('click', async () => {
+  // Hide welcome, show survey
+  welcomeSection.classList.add('hidden');
+  surveySection.classList.remove('hidden');
+
+  // Make a call to the API with no questionId/answer to get the first question
+  const firstQuestion = await submitAnswerToServer(null, null);
+
+  // Show the question
+  showQuestion(firstQuestion);
 });
 
 // "Submit Answer" button click handler
 submitBtn.addEventListener('click', async () => {
-    const currentQuestion = mockSurveyData[currentQuestionIndex];
-    const answer = collectResponse(currentQuestion);
+  if (!currentQuestion) {
+    console.warn("No current question to submit.");
+    return;
+  }
 
-    if (answer !== null) { // Only submit if response is collected
-        submitBtn.disabled = true; // Disable submit during server call (optional)
-        submitBtn.textContent = "Submitting..."; // Indicate submission (optional)
+  // Collect user answer from the DOM
+  const answer = collectResponse(currentQuestion);
 
-        const nextQuestionData = await submitAnswerToServer(currentQuestion, answer); // Wait for "server" response
+  // Store user response locally
+  userResponses.push({
+    questionId: currentQuestion.questionId,
+    question: currentQuestion.question,
+    answer: answer,
+  });
 
-        submitBtn.disabled = false; // Re-enable submit (optional)
-        submitBtn.textContent = "Submit Answer"; // Reset button text (optional)
+  // Prevent submit spamming
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting...";
 
-        showQuestion(nextQuestionData); // Show next question based on "server" response
-    } else {
-        console.warn("No answer collected for question type:", currentQuestion.type);
-        // Optionally provide user feedback that an answer is needed
-    }
+  // Submit all answers to the server to get the next question
+  const nextQuestionData = await submitAnswerToServer(currentQuestion.questionId, answer);
+
+  // Re-enable submit button
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Submit Answer";
+
+  // Show the next question (or end if isLastQuestion)
+  showQuestion(nextQuestionData);
 });
