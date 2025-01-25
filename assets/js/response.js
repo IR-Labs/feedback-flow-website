@@ -51,7 +51,7 @@ function collectResponse(questionObj) {
             response = input.value;
             break;
         }
-        case 'checkbox': {
+        case 'multiple_choice': {
             const checkboxes = document.getElementsByName('checkboxOptions');
             response = [];
             checkboxes.forEach((checkbox) => {
@@ -61,7 +61,7 @@ function collectResponse(questionObj) {
             });
             break;
         }
-        case 'radio': {
+        case 'single_choice': {
             const radios = document.getElementsByName('radioOptions');
             radios.forEach((radio) => {
                 if (radio.checked) {
@@ -78,26 +78,33 @@ function collectResponse(questionObj) {
 
 // Function to simulate submitting answer to server and getting next question
 async function submitAnswerToServer(questionObj, answer) {
-    return new Promise(resolve => {
-        // Simulate network request delay (e.g., 500ms to 1 second)
-        setTimeout(() => {
-            // Simulate server-side processing:
-            userResponses.push({
-                questionId: questionObj.id,
-                answer: answer
-            });
+    try {
+        const response = await fetch('https://fqq2171wy2.execute-api.ap-south-1.amazonaws.com/submit-answer', {
+            method: 'POST',
+            mode: 'cors',
+            body: JSON.stringify({
+                questionId: "abc123",
+            })
+        });
 
-            currentQuestionIndex++; // Move to next question index
+        // Log the response status (for demo purposes)
+        console.log('API Response:', response.status);
+        // Log the response data (for demo purposes)
+        if (!response.ok) throw new Error('API request failed:', response.status);
 
-            let nextQuestionData = null;
-            if (currentQuestionIndex < mockSurveyData.length) {
-                nextQuestionData = mockSurveyData[currentQuestionIndex]; // "Server" sends next question
-            } else {
-                nextQuestionData = { type: 'thank-you' }; // "Server" signals end of survey
-            }
-            resolve(nextQuestionData); // Resolve promise with "server response"
-        }, 800); // Simulate 800ms server processing time
-    });
+        const nextQuestionData = await response.json();
+        
+        // Handle API response format (adjust based on your API's actual response):
+        if (nextQuestionData.type === 'completed') {
+            return { type: 'thank-you' };
+        }
+        return nextQuestionData;
+
+    } catch (error) {
+        console.error('API Error:', error);
+        // Handle errors (retry logic, show error message, etc.)
+        return { type: 'error', message: 'Failed to submit answer' };
+    }
 }
 
 
@@ -128,7 +135,7 @@ function showQuestion(questionData) {
             optionsContainer.appendChild(input);
             break;
         }
-        case 'checkbox': {
+        case 'multiple_choice': {
             questionData.options.forEach((option, idx) => {
                 const div = document.createElement('div');
                 div.className = 'form-check';
@@ -151,7 +158,7 @@ function showQuestion(questionData) {
             });
             break;
         }
-        case 'radio': {
+        case 'single_choice': {
             questionData.options.forEach((option, idx) => {
                 const div = document.createElement('div');
                 div.className = 'form-check';
