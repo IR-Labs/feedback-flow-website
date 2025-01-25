@@ -10,8 +10,8 @@ const optionsContainer = document.getElementById('options-container');
 // Track the current question object (as returned by API)
 let currentQuestion = null;
 
-// Keep user responses in an array
-let userResponses = [];
+// Keep all messages in an array
+let allMessages = [];
 
 /**
  * Collects user response from the DOM based on the question type.
@@ -78,7 +78,7 @@ async function submitAnswerToServer(answer) {
     // Build the request body
     // Now sending all user responses in 'allResponses'
     const requestBody = {
-        lastMessages: userResponses // all answers so far
+        lastMessages: allMessages // all answers so far
     };
 
     console.log('Request Body:', requestBody);
@@ -99,7 +99,7 @@ async function submitAnswerToServer(answer) {
     console.log('API Response:', responseData);
 
     // Store question locally
-    userResponses.push({
+    allMessages.push({
         text: responseData.question,
         isSentByUser: false
     });
@@ -129,11 +129,11 @@ function showQuestion(questionData) {
     thankYouSection.classList.remove('hidden');
 
     // For debugging or record-keeping
-    console.log("User Responses:", userResponses);
+    console.log("All messages:", allMessages);
 
     // Optional: reset logic if you want to start again
     currentQuestion = null;
-    userResponses = [];
+    allMessages = [];
     return;
   }
 
@@ -234,7 +234,7 @@ submitBtn.addEventListener('click', async () => {
   const answer = collectResponse(currentQuestion);
 
   // Store user response locally
-  userResponses.push({
+  allMessages.push({
     text: answer.toString(),
     isSentByUser: true
   });
