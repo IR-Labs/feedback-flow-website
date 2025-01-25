@@ -63,7 +63,6 @@ function collectResponse(questionObj) {
  * The request now also includes the entire array of all user responses so far.
  *
  * The response from the API is assumed to contain fields:
- *   - questionId
  *   - question
  *   - type ('text' | 'multiple_choice' | 'single_choice')
  *   - possibleChoices (array) for multiple/single choice
@@ -71,19 +70,18 @@ function collectResponse(questionObj) {
  * 
  * Adjust the request/response structure based on your real API.
  *
- * @param {string|null} questionId - The ID of the current question or null/empty for the first call.
  * @param {any} answer - The user's answer for the current question.
  * @returns {object|null} - The next question object or null on error.
  */
-async function submitAnswerToServer(questionId, answer) {
+async function submitAnswerToServer(answer) {
   try {
     // Build the request body
     // Now sending all user responses in 'allResponses'
     const requestBody = {
-      questionId: questionId,     // or null if first question
-      userAnswer: answer,         // the newly collected answer
-      allResponses: userResponses // all answers so far
+        lastMessages: userResponses // all answers so far
     };
+
+    console.log('Request Body:', requestBody);
 
     // Make the fetch call
     const response = await fetch('https://fqq2171wy2.execute-api.ap-south-1.amazonaws.com/submit-answer', {
@@ -100,9 +98,14 @@ async function submitAnswerToServer(questionId, answer) {
     const responseData = await response.json();
     console.log('API Response:', responseData);
 
+    // Store question locally
+    userResponses.push({
+        text: responseData.question,
+        isSentByUser: false
+    });
+
     // Expected structure in responseData:
     // {
-    //   questionId: string,
     //   question: string,
     //   type: 'text' | 'multiple_choice' | 'single_choice',
     //   possibleChoices: string[],
@@ -213,8 +216,8 @@ startBtn.addEventListener('click', async () => {
   welcomeSection.classList.add('hidden');
   surveySection.classList.remove('hidden');
 
-  // Make a call to the API with no questionId/answer to get the first question
-  const firstQuestion = await submitAnswerToServer(null, null);
+  // Make a call to the API with no answer to get the first question
+  const firstQuestion = await submitAnswerToServer(null);
 
   // Show the question
   showQuestion(firstQuestion);
@@ -232,9 +235,8 @@ submitBtn.addEventListener('click', async () => {
 
   // Store user response locally
   userResponses.push({
-    questionId: currentQuestion.questionId,
-    question: currentQuestion.question,
-    answer: answer,
+    text: answer,
+    isSentByUser: true
   });
 
   // Prevent submit spamming
@@ -242,7 +244,7 @@ submitBtn.addEventListener('click', async () => {
   submitBtn.textContent = "Submitting...";
 
   // Submit all answers to the server to get the next question
-  const nextQuestionData = await submitAnswerToServer(currentQuestion.questionId, answer);
+  const nextQuestionData = await submitAnswerToServer(answer);
 
   // Re-enable submit button
   submitBtn.disabled = false;
