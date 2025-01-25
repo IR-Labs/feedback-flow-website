@@ -235,7 +235,7 @@ submitBtn.addEventListener('click', async () => {
 
   // Store user response locally
   userResponses.push({
-    text: answer,
+    text: answer.toString(),
     isSentByUser: true
   });
 
