@@ -59,7 +59,7 @@ function collectResponse(questionObj) {
                     response.push(checkbox.value);
                 }
             });
-            // If no checkboxes are selected, response stays an empty array
+            // If no checkboxes are selected, response remains an empty array
             break;
         }
 
@@ -115,7 +115,7 @@ async function submitAnswerToServer(answer) {
         const responseData = await response.json();
         console.log('API Response:', responseData);
 
-        // Store question in messages
+        // Store question in messages (the question text from server)
         allMessages.push({
             text: responseData.question,
             isSentByUser: false
@@ -132,11 +132,13 @@ async function submitAnswerToServer(answer) {
 }
 
 /**
- * Displays a question in the UI. 
+ * Displays a question in the UI.
+ * - If questionData is null, or not provided, show the "Thank You" screen.
+ * - Otherwise, render the question and set the button label appropriately.
  */
 function showQuestion(questionData) {
-    // If null or no question data or last question => show thank you
-    if (!questionData || questionData.isLastQuestion) {
+    // If there's no question data at all, just show the thank-you screen
+    if (!questionData) {
         surveySection.classList.add('hidden');
         thankYouSection.classList.remove('hidden');
         console.log("All messages:", allMessages);
@@ -152,10 +154,22 @@ function showQuestion(questionData) {
     // Clear out the error alert (in case it was showing previously)
     hideError();
 
-    // Update UI elements
+    // Show the survey section, hide the thank-you
+    surveySection.classList.remove('hidden');
+    thankYouSection.classList.add('hidden');
+
+    // Update question text
     questionText.textContent = questionData.question;
     optionsContainer.innerHTML = ''; // Clear old options
 
+    // Set button text based on whether this is the last question
+    if (questionData.isLastQuestion) {
+        submitBtn.textContent = "Finish";
+    } else {
+        submitBtn.textContent = "Next question";
+    }
+
+    // Render input controls
     switch (questionData.questionType) {
         case 'text': {
             const input = document.createElement('input');
@@ -246,11 +260,8 @@ submitBtn.addEventListener('click', async () => {
     // Check if the user actually gave an answer
     //  For text questions: answer is null if empty
     //  For single_choice: answer is null if no radio selected
-    //  For multiple_choice: answer is an array, so check length === 0
-    if (
-        !answer ||                 // covers null, empty string
-        (Array.isArray(answer) && answer.length === 0)
-    ) {
+    //  For multiple_choice: answer is an array; check length === 0
+    if (!answer || (Array.isArray(answer) && answer.length === 0)) {
         showError('Please provide an answer before submitting!');
         return; // Stop here
     }
@@ -270,8 +281,19 @@ submitBtn.addEventListener('click', async () => {
 
     // Re-enable submit
     submitBtn.disabled = false;
-    submitBtn.textContent = "Submit Answer";
 
-    // Show next question (or thank you if last)
-    showQuestion(nextQuestionData);
+    // Decide what to do after we get the next question
+    if (currentQuestion.isLastQuestion) {
+        // If the current one was the last question, show "Thank You"
+        surveySection.classList.add('hidden');
+        thankYouSection.classList.remove('hidden');
+        console.log("All messages:", allMessages);
+
+        // Optionally reset if you want a fresh survey next time
+        currentQuestion = null;
+        allMessages = [];
+    } else {
+        // Otherwise, show the next question
+        showQuestion(nextQuestionData);
+    }
 });
