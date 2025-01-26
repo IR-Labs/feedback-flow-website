@@ -87,8 +87,17 @@ function collectResponse(questionObj) {
  */
 async function submitAnswerToServer(answer) {
     try {
+        // Get the details from query parameters
+        const queryParams = getQueryParams();
+        const surveyId = queryParams.surveyId;
+        const userId = queryParams.userId;
+        console.log('SurveyId:', surveyId);
+        console.log('UserId:', userId);
+
         // Build the request body
         const requestBody = {
+            surveyId: surveyId,
+            userId: userId,
             lastMessages: allMessages // all answers so far
         };
 
@@ -297,3 +306,19 @@ submitBtn.addEventListener('click', async () => {
         showQuestion(nextQuestionData);
     }
 });
+
+// Function to extract query parameters from the URL
+function getQueryParams() {
+    const params = {};
+    const queryString = window.location.search.substring(1);
+    const pairs = queryString.split('&');
+  
+    for (const pair of pairs) {
+      if (pair) {
+        const [key, value] = pair.split('=');
+        params[decodeURIComponent(key)] = decodeURIComponent(value || '');
+      }
+    }
+  
+    return params;
+  }
