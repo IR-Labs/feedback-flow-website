@@ -118,6 +118,7 @@ async function submitAnswerToServer(answer) {
 
         if (!response.ok) {
             console.error('API request failed:', response.status);
+            showError('Error submitting answer. Please reload and try again.');
             return null;
         }
 
@@ -133,6 +134,7 @@ async function submitAnswerToServer(answer) {
         return responseData;
     } catch (error) {
         console.error('API Error:', error);
+        showError('Error submitting answer. Please reload and try again.');
         return null;
     } finally {
         // Hide loader
