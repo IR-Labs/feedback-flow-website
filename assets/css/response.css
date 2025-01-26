@@ -1,0 +1,27 @@
+/* Body styles */
+body {
+    background-color: #f8f9fa;
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Container for the survey */
+  .survey-container {
+    background: #fff;
+    margin-top: 50px;
+    padding: 30px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Generic hidden class used to show/hide sections */
+  .hidden {
+    display: none;
+  }
+  
+  /* Question text styling */
+  .question-text {
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+  }
