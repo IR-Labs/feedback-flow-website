@@ -8,15 +8,37 @@ const questionText = document.getElementById('question-text');
 const optionsContainer = document.getElementById('options-container');
 const loader = document.getElementById('loader');
 
-// Track the current question object (as returned by API)
+// Add references for the error alert
+const errorAlert = document.getElementById('error-alert');
+
+// Track the current question object
 let currentQuestion = null;
 
 // Keep all messages in an array
 let allMessages = [];
 
 /**
+ * Utility to show error messages in the alert box
+ * @param {string} message
+ */
+function showError(message) {
+    errorAlert.textContent = message;
+    errorAlert.classList.remove('d-none');
+    errorAlert.style.display = 'block';
+}
+
+/**
+ * Utility to hide the error alert
+ */
+function hideError() {
+    errorAlert.textContent = '';
+    errorAlert.classList.add('d-none');
+    errorAlert.style.display = 'none';
+}
+
+/**
  * Collects user response from the DOM based on the question type.
- * @param {object} questionObj - The question object that includes "type" and "possibleChoices".
+ * @param {object} questionObj - The question object that includes "questionType" and "possibleChoices".
  * @returns {string|array|null} - The user response.
  */
 function collectResponse(questionObj) {
@@ -37,7 +59,7 @@ function collectResponse(questionObj) {
                     response.push(checkbox.value);
                 }
             });
-            // If nothing selected, this will be an empty array. Adjust if you prefer null.
+            // If no checkboxes are selected, response stays an empty array
             break;
         }
 
@@ -48,6 +70,7 @@ function collectResponse(questionObj) {
                     response = radio.value;
                 }
             });
+            // If no radio button is selected, response stays null
             break;
         }
 
@@ -61,38 +84,28 @@ function collectResponse(questionObj) {
 
 /**
  * Makes a request to your API. 
- * The request now also includes the entire array of all user responses so far.
- *
- * The response from the API is assumed to contain fields:
- *   - question
- *   - type ('text' | 'multiple_choice' | 'single_choice')
- *   - possibleChoices (array) for multiple/single choice
- *   - isLastQuestion (boolean)
- * 
- * Adjust the request/response structure based on your real API.
- *
- * @param {any} answer - The user's answer for the current question.
- * @returns {object|null} - The next question object or null on error.
  */
 async function submitAnswerToServer(answer) {
     try {
         // Build the request body
-        // Now sending all user responses in 'allResponses'
         const requestBody = {
             lastMessages: allMessages // all answers so far
         };
 
         console.log('Request Body:', requestBody);
 
-        // Show loader while waiting for response
+        // Show loader while waiting
         loader.classList.remove('d-none');
 
         // Make the fetch call
-        const response = await fetch('https://fqq2171wy2.execute-api.ap-south-1.amazonaws.com/submit-answer', {
-            method: 'POST',
-            mode: 'cors',
-            body: JSON.stringify(requestBody),
-        });
+        const response = await fetch(
+            'https://fqq2171wy2.execute-api.ap-south-1.amazonaws.com/submit-answer',
+            {
+                method: 'POST',
+                mode: 'cors',
+                body: JSON.stringify(requestBody),
+            }
+        );
 
         if (!response.ok) {
             console.error('API request failed:', response.status);
@@ -102,50 +115,42 @@ async function submitAnswerToServer(answer) {
         const responseData = await response.json();
         console.log('API Response:', responseData);
 
-        // Store question locally
+        // Store question in messages
         allMessages.push({
             text: responseData.question,
             isSentByUser: false
         });
 
-        // Expected structure in responseData:
-        // {
-        //   question: string,
-        //   type: 'text' | 'multiple_choice' | 'single_choice',
-        //   possibleChoices: string[],
-        //   isLastQuestion: boolean
-        // }
         return responseData;
     } catch (error) {
         console.error('API Error:', error);
         return null;
     } finally {
-        // Hide loader after response or error
+        // Hide loader
         loader.classList.add('d-none');
     }
 }
 
 /**
- * Displays a question in the UI. If isLastQuestion is true, shows thank-you section.
- * @param {object} questionData - The question data object from the API or null on error.
+ * Displays a question in the UI. 
  */
 function showQuestion(questionData) {
-    // If null or no question data returned, or we have isLastQuestion = true => show "Thank you"
+    // If null or no question data or last question => show thank you
     if (!questionData || questionData.isLastQuestion) {
         surveySection.classList.add('hidden');
         thankYouSection.classList.remove('hidden');
-
-        // For debugging or record-keeping
         console.log("All messages:", allMessages);
 
-        // Optional: reset logic if you want to start again
+        // Optionally reset logic if needed
         currentQuestion = null;
         allMessages = [];
         return;
     }
 
-    // Store the current question
     currentQuestion = questionData;
+
+    // Clear out the error alert (in case it was showing previously)
+    hideError();
 
     // Update UI elements
     questionText.textContent = questionData.question;
@@ -162,7 +167,6 @@ function showQuestion(questionData) {
         }
 
         case 'multiple_choice': {
-            // Use questionData.possibleChoices
             (questionData.possibleChoices || []).forEach((choice, idx) => {
                 const div = document.createElement('div');
                 div.className = 'form-check';
@@ -187,7 +191,6 @@ function showQuestion(questionData) {
         }
 
         case 'single_choice': {
-            // Use questionData.possibleChoices
             (questionData.possibleChoices || []).forEach((choice, idx) => {
                 const div = document.createElement('div');
                 div.className = 'form-check';
@@ -217,46 +220,58 @@ function showQuestion(questionData) {
     }
 }
 
-// "Start Survey" button click handler
+// "Start Survey" button
 startBtn.addEventListener('click', async () => {
-    // Hide welcome, show survey
     welcomeSection.classList.add('hidden');
     surveySection.classList.remove('hidden');
 
-    // Make a call to the API with no answer to get the first question
+    // Get the first question from the server
     const firstQuestion = await submitAnswerToServer(null);
-
-    // Show the question
     showQuestion(firstQuestion);
 });
 
-// "Submit Answer" button click handler
+// "Submit Answer" button
 submitBtn.addEventListener('click', async () => {
     if (!currentQuestion) {
         console.warn("No current question to submit.");
         return;
     }
 
-    // Collect user answer from the DOM
+    // Collect user answer
     const answer = collectResponse(currentQuestion);
 
-    // Store user response locally
+    // Clear any previous error
+    hideError();
+
+    // Check if the user actually gave an answer
+    //  For text questions: answer is null if empty
+    //  For single_choice: answer is null if no radio selected
+    //  For multiple_choice: answer is an array, so check length === 0
+    if (
+        !answer ||                 // covers null, empty string
+        (Array.isArray(answer) && answer.length === 0)
+    ) {
+        showError('Please provide an answer before submitting!');
+        return; // Stop here
+    }
+
+    // Store user response in local messages
     allMessages.push({
-        text: answer.toString(),
+        text: Array.isArray(answer) ? answer.join(', ') : answer.toString(),
         isSentByUser: true
     });
 
-    // Prevent submit spamming
+    // Disable submit to prevent spamming
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
 
-    // Submit all answers to the server to get the next question
+    // Submit answer to the server
     const nextQuestionData = await submitAnswerToServer(answer);
 
-    // Re-enable submit button
+    // Re-enable submit
     submitBtn.disabled = false;
     submitBtn.textContent = "Submit Answer";
 
-    // Show the next question (or end if isLastQuestion)
+    // Show next question (or thank you if last)
     showQuestion(nextQuestionData);
 });
